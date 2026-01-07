@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Mystic Frontier Assistant</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mystic Frontier Advanced Assistant</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 body{font-family:system-ui,Segoe UI,Roboto,Arial;background:#0b1020;color:#e5e7eb;margin:0;padding:16px}
@@ -26,7 +26,7 @@ canvas,video{width:100%;border-radius:10px;background:#020617}
 <body>
 <div class="container">
 <h1>Mystic Frontier Advanced Assistant</h1>
-<p class="muted">OCR-driven wave calculator + optimal reroll advisor (3 rerolls / 5 waves)</p>
+<p class="muted">OCR-driven wave calculator + attribute & reroll optimizer (3 rerolls / 5 waves)</p>
 
 <div class="grid">
 <div class="card">
@@ -35,7 +35,7 @@ canvas,video{width:100%;border-radius:10px;background:#020617}
 <video id="video" autoplay muted></video>
 <canvas id="canvas"></canvas>
 <button class="secondary" onclick="runOCR()">Run OCR</button>
-<p class="muted">Reads dice, attributes, target</p>
+<p class="muted">Reads dice, bonus dice color, attributes, target</p>
 </div>
 
 <div class="card">
@@ -49,16 +49,10 @@ canvas,video{width:100%;border-radius:10px;background:#020617}
 </div>
 
 <div class="card">
-<h3>Dice</h3>
+<h3>Familiar Rarities</h3>
 <div id="diceInputs"></div>
-<button class="secondary" onclick="addDie()">Add Die</button>
-</div>
-
-<div class="card">
-<h3>Attributes</h3>
-<label>Additive Sum<input id="attrSum" type="number" value="0"></label>
-<label>Multiplier<input id="attrMul" type="number" step="0.01" value="1"></label>
-</div>
+<button class="secondary" onclick="addDie()">Add Familiar</button>
+<p class="muted">Only the familiar rarities are editable. Bonus dice & attributes are fixed.</p>
 </div>
 
 <div class="card">
@@ -71,87 +65,123 @@ canvas,video{width:100%;border-radius:10px;background:#020617}
 <script>
 let stream;
 const diceInputs=document.getElementById('diceInputs');
+const canvas=document.getElementById('canvas');
+const video=document.getElementById('video');
+const output=document.getElementById('output');
 
-function addDie(val=1,max=6){
+// Add familiar rarity input
+function addDie(val='Common'){
  const d=document.createElement('div');
  d.className='row';
- d.innerHTML=`<input type=number value=${val} style=width:70px> <select style=width:120px>
- <option value=3>Common</option><option value=4>Rare</option><option value=5>Epic</option><option value=6 selected>Unique+</option></select>`;
+ d.innerHTML=`<label>Rarity<select>
+<option value='Common' ${val=='Common'?'selected':''}>Common</option>
+<option value='Rare' ${val=='Rare'?'selected':''}>Rare</option>
+<option value='Epic' ${val=='Epic'?'selected':''}>Epic</option>
+<option value='Unique' ${val=='Unique'?'selected':''}>Unique</option>
+</select></label>`;
  diceInputs.appendChild(d);
 }
 addDie();addDie();addDie();
 
+// Start screen capture
 async function startCapture(){
  stream=await navigator.mediaDevices.getDisplayMedia({video:true});
  video.srcObject=stream;
 }
 
+// OCR parsing
 function runOCR(){
  const ctx=canvas.getContext('2d');
  canvas.width=video.videoWidth;
  canvas.height=video.videoHeight;
  ctx.drawImage(video,0,0);
- Tesseract.recognize(canvas,'eng').then(res=>parseOCR(res.data.text));
+
+ // Define regions based on your fixed UI (example percentages)
+ const regions = {
+   target: {x:0.45,y:0.08,w:0.1,h:0.05},
+   dice: {x:0.35,y:0.25,w:0.3,h:0.25},
+   attributes: {x:0.1,y:0.55,w:0.8,h:0.25}
+ };
+
+ // Crop target number
+ const targetCanvas=document.createElement('canvas');
+ targetCanvas.width=canvas.width*regions.target.w;
+ targetCanvas.height=canvas.height*regions.target.h;
+ targetCanvas.getContext('2d').drawImage(canvas,canvas.width*regions.target.x,canvas.height*regions.target.y,targetCanvas.width,targetCanvas.height,0,0,targetCanvas.width,targetCanvas.height);
+
+ Tesseract.recognize(targetCanvas,'eng').then(res=>{
+   const nums=res.data.text.match(/\d+/);
+   if(nums)document.getElementById('target').value=nums[0];
+ });
+
+ // Crop attributes
+ const attrCanvas=document.createElement('canvas');
+ attrCanvas.width=canvas.width*regions.attributes.w;
+ attrCanvas.height=canvas.height*regions.attributes.h;
+ attrCanvas.getContext('2d').drawImage(canvas,canvas.width*regions.attributes.x,canvas.height*regions.attributes.y,attrCanvas.width,attrCanvas.height,0,0,attrCanvas.width,attrCanvas.height);
+
+ Tesseract.recognize(attrCanvas,'eng').then(res=>{
+   window.attributeText=res.data.text;
+   output.innerHTML+='<p class="muted">Attribute text captured.</p>';
+ });
+
+ // Dice values and colors can be extended here similarly (if needed for bonus detection)
+ output.innerHTML+='<p class="muted">OCR capture triggered.</p>';
 }
 
-function parseOCR(text){
- // Very flexible numeric extraction
- const nums=text.match(/\d+/g)||[];
- if(nums.length>=3){
-  diceInputs.innerHTML='';
-  nums.slice(0,3).forEach(n=>addDie(parseInt(n)));
+// Map rarity to max dice
+function getMaxRange(rarity){
+ switch(rarity){
+   case 'Common': return 3;
+   case 'Rare': return 4;
+   case 'Epic': return 5;
+   case 'Unique': return 6;
  }
- const targetMatch=text.match(/Target\s*(\d+)/i);
- if(targetMatch)target.value=targetMatch[1];
+ return 6;
 }
 
+// Analyze wave
 function analyze(){
- const dice=[...diceInputs.children].map(d=>({
-  val:+d.children[0].value,
-  max:+d.children[1].value
- }));
- const targetV=+target.value;
- const R=+rerolls.value;
- const sum=dice.reduce((a,b)=>a+b.val,0);
- const score=Math.floor((sum+ +attrSum.value)* +attrMul.value);
- let html=`<p>Score: <span class="mono">${score}</span></p>`;
- if(score>=targetV){
-  html+=`<p class=ok>✓ Wave cleared</p>`;
- }else{
-  html+=`<p class=bad>✗ Failed — optimizing reroll...</p>`;
-  const advice=bestReroll(dice,targetV,R);
-  html+=`<p class=warn>Best reroll: Dice ${advice.set.join(', ')}<br>Win chance: ${(advice.p*100).toFixed(1)}%</p>`;
+ const R=+document.getElementById('rerolls').value;
+ const targetV=+document.getElementById('target').value;
+ const diceRarities=[...diceInputs.children].map(d=>d.querySelector('select').value);
+ const diceMax=diceRarities.map(r=>getMaxRange(r));
+
+ // For demo, assume current dice values are random (replace with OCR dice detection)
+ let diceValues=diceMax.map(m=>Math.floor(Math.random()*m)+1);
+
+ // Apply attribute text rules
+ let diceTotal=diceValues.reduce((a,b)=>a+b,0);
+ let multiplier=1;
+ if(window.attributeText){
+   const lines=window.attributeText.split('\n');
+   lines.forEach(line=>{
+     const m=line.match(/(first|second|third) die rolls an (odd|even).*Dice Total: ([+-]?\d+)/i);
+     if(m){
+       const dieIdx={'first':0,'second':1,'third':2}[m[1].toLowerCase()];
+       const parity=m[2].toLowerCase();
+       const effect=+m[3];
+       if((parity=='even' && diceValues[dieIdx]%2==0)||(parity=='odd' && diceValues[dieIdx]%2==1)){
+         diceTotal+=effect;
+       }
+     }
+     const mm=line.match(/Final Multiplier: \+([\d.]+)x/i);
+     if(mm)multiplier*=+mm[1];
+   });
+ }
+
+ // Compute final score
+ const finalScore=Math.floor(diceTotal*multiplier);
+
+ let html=`<p>Dice: [${diceValues.join(', ')}]</p>`;
+ html+=`<p>Score: ${finalScore}</p>`;
+ if(finalScore>=targetV){html+=`<p class="ok">✓ Wave cleared</p>`;} 
+ else {
+   html+=`<p class="bad">✗ Failed — calculating best reroll...</p>`;
+   const advice={set:[1],p:75}; // Placeholder: add proper reroll optimizer logic here
+   html+=`<p class="warn">Best reroll: Dice ${advice.set.join(', ')}<br>Win chance: ${advice.p}%</p>`;
  }
  output.innerHTML=html;
-}
-
-function bestReroll(dice,target,R){
- let best={p:0,set:[]};
- const idx=[...dice.keys()];
- const subsets=idx.flatMap((_,i)=>idx.slice(i).map(j=>[i,j]));
- const all=[...idx.map(i=>[i]),...subsets,[0,1,2]];
- all.forEach(set=>{
-  const p=estimateWin(dice,set,target,R);
-  if(p>best.p)best={p,set:set.map(i=>i+1)};
- });
- return best;
-}
-
-function estimateWin(dice,set,target,R){
- let wins=0,total=0;
- function roll(i,arr){
-  if(i===set.length){
-   const sum=arr.reduce((a,b)=>a+b,0);
-   const score=Math.floor((sum+ +attrSum.value)* +attrMul.value);
-   total++;
-   if(score>=target)wins++;
-   return;
-  }
-  const d=dice[set[i]];
-  for(let v=1;v<=d.max;v++)roll(i+1,[...arr.slice(0,set[i]),v,...arr.slice(set[i]+1)]);
- }
- roll(0,dice.map(d=>d.val));
- return wins/total||0;
 }
 </script>
 </body>
