@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mystic Frontier Calculator - Dynamic Attributes</title>
+<title>Mystic Frontier Calculator - Auto UI Detection</title>
 <style>
-  body { margin: 0; font-family: sans-serif; background:#121212; color:#fff; }
+  body { margin:0; font-family:sans-serif; background:#121212; color:#fff; }
   #container { display:flex; height:100vh; }
   #leftPanel { flex:2; display:flex; justify-content:center; align-items:center; background:#1e1e1e; }
   #canvas { border:2px solid #444; }
@@ -13,7 +13,6 @@
   .section { margin-top:15px; border-top:1px solid #333; padding-top:10px; }
   .dice-box { display:flex; gap:10px; margin-top:5px; }
   .dice { width:40px; height:40px; background:#333; border-radius:5px; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:18px; }
-  .bonus { color:#0f0; margin-left:5px; }
   textarea { width:100%; background:#222; color:#0f0; border:none; padding:5px; font-family:monospace; }
   select { padding:5px; background:#222; color:#fff; border:none; margin-left:5px; }
   button { padding:8px 12px; margin-top:5px; background:#0066ff; border:none; color:#fff; border-radius:4px; cursor:pointer; }
@@ -34,11 +33,7 @@
   <!-- Right Panel: Analysis -->
   <div id="rightPanel">
     <h2>Analysis Results</h2>
-
-    <!-- Top Summary -->
     <div class="summary" id="summary">TOTAL + DICE x MULTIPLIER</div>
-
-    <!-- Dice Display -->
     <div>DICE</div>
     <div class="dice-box" id="diceDisplay">
       <div class="dice" id="D1">?</div>
@@ -46,7 +41,6 @@
       <div class="dice" id="D3">?</div>
     </div>
 
-    <!-- Familiar Rarity Selection -->
     <div class="section">
       <strong>Familiar Rarity:</strong>
       <select id="fam1"><option value="3">Common</option><option value="4">Rare</option><option value="5">Epic</option><option value="6">Unique+</option></select>
@@ -54,7 +48,6 @@
       <select id="fam3"><option value="3">Common</option><option value="4">Rare</option><option value="5">Epic</option><option value="6">Unique+</option></select>
     </div>
 
-    <!-- Site Details -->
     <div class="section">
       <strong>SITE DETAILS</strong>
       <div>White Dice: Multiplier +1.2</div>
@@ -63,19 +56,16 @@
       <div>Orange Dice: +1 to Dice, Multiplier +2</div>
     </div>
 
-    <!-- Attributes -->
     <div class="section">
       <strong>ATTRIBUTES</strong>
       <div id="attributesDisplay"></div>
     </div>
 
-    <!-- Raw OCR Text -->
     <div class="section">
-      <strong>Raw Text</strong>
+      <strong>Raw OCR Text</strong>
       <textarea id="rawText" rows="6" readonly>No text detected</textarea>
     </div>
 
-    <!-- Controls -->
     <div class="section">
       <button id="selectScreen">Select Screen</button>
       <button id="process">Process OCR</button>
@@ -99,79 +89,91 @@ const bonusDice = {
 let dice = [0,0,0];
 let rerollsLeft = 3;
 
+async function detectGameUI(imageData) {
+  // Simple placeholder: assume the entire canvas is the UI for now
+  // Future: implement border/color detection to crop cat-border automatically
+  return {x:0, y:0, width:canvas.width, height:canvas.height};
+}
+
+async function runOCR(cropped) {
+  const {data:{text}} = await Tesseract.recognize(cropped, 'eng', {logger:m=>console.log(m)});
+  return text;
+}
+
 document.getElementById('selectScreen').onclick = async ()=>{
   try{
     videoStream = await navigator.mediaDevices.getDisplayMedia({video:true});
     let video = document.createElement('video');
     video.srcObject = videoStream;
-    video.play();
-    video.onloadedmetadata = ()=>{
-      ctx.drawImage(video,0,0,canvas.width,canvas.height);
-      video.pause();
-      video.srcObject.getTracks()[0].stop();
-    };
+    await video.play();
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    video.pause();
+    video.srcObject.getTracks()[0].stop();
   }catch(e){alert("Screen capture failed: "+e);}
 };
 
 document.getElementById('process').onclick = async ()=>{
-  // Get familiar rarities
-  let fam = [parseInt(document.getElementById('fam1').value),
-             parseInt(document.getElementById('fam2').value),
-             parseInt(document.getElementById('fam3').value)];
+  // Detect UI region (cat-border)
+  let uiBox = await detectGameUI(ctx.getImageData(0,0,canvas.width,canvas.height));
+  let croppedCanvas = document.createElement('canvas');
+  croppedCanvas.width = uiBox.width;
+  croppedCanvas.height = uiBox.height;
+  let croppedCtx = croppedCanvas.getContext('2d');
+  croppedCtx.putImageData(ctx.getImageData(uiBox.x, uiBox.y, uiBox.width, uiBox.height),0,0);
 
-  // Generate dice randomly for now; later replace with OCR
-  dice = [Math.ceil(Math.random()*fam[0]),
-          Math.ceil(Math.random()*fam[1]),
-          Math.ceil(Math.random()*fam[2])];
+  // OCR the UI
+  let rawText = await runOCR(croppedCanvas);
+  document.getElementById('rawText').value = rawText;
 
-  // Placeholder: raw OCR attribute text
-  let rawAttrText = "If second die even, Dice Total +6\nPoison elemental active, Multiplier +1.6\nAll familiars different element, Dice Total +3";
-  document.getElementById('rawText').value = rawAttrText;
+  // Extract dice, target, attributes from raw text (simple regex parsing demo)
+  // Number to beat
+  let targetMatch = rawText.match(/number to beat[:\s]*([0-9]+)/i);
+  let target = targetMatch ? parseInt(targetMatch[1]) : 25;
 
-  // Parse attributes
-  let lines = rawAttrText.split("\n");
+  // Dice values (placeholder regex)
+  let diceMatches = rawText.match(/dice\s*1[:\s]*([0-9]+)/i);
+  dice[0] = diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
+  diceMatches = rawText.match(/dice\s*2[:\s]*([0-9]+)/i);
+  dice[1] = diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
+  diceMatches = rawText.match(/dice\s*3[:\s]*([0-9]+)/i);
+  dice[2] = diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
+
+  // Attributes parsing (lines that mention die or familiar)
+  let lines = rawText.split("\n").filter(l=>l.trim()!="");
   let totalDice = dice.reduce((a,b)=>a+b,0);
   let multiplier = 1.0;
   let appliedAttrs = [];
-
   for(let line of lines){
-    line = line.toLowerCase();
+    let l = line.toLowerCase();
     // Dice-dependent
-    if(line.includes("second die") && line.includes("even") && dice[1]%2===0){
-      totalDice += 6; appliedAttrs.push(line);
-    }
-    if(line.includes("third die") && line.includes("odd") && dice[2]%2===1){
-      totalDice += 6; appliedAttrs.push(line);
-    }
-    // Familiar-dependent (always apply)
-    if(line.includes("poison elemental") || line.includes("all familiars different")){
-      if(line.includes("dice total")) totalDice += parseInt(line.match(/(\d+)/)[0]);
-      if(line.includes("multiplier")) multiplier *= parseFloat(line.match(/(\d+(\.\d+)?)/)[0]);
+    if(l.includes("second die") && l.includes("even") && dice[1]%2===0){ totalDice += 6; appliedAttrs.push(line); }
+    if(l.includes("third die") && l.includes("odd") && dice[2]%2===1){ totalDice += 6; appliedAttrs.push(line); }
+    // Familiar-dependent always true
+    if(l.includes("poison elemental") || l.includes("all familiars different")) {
+      if(l.includes("dice total")) totalDice += parseInt(l.match(/(\d+)/)[0]);
+      if(l.includes("multiplier")) multiplier *= parseFloat(l.match(/(\d+(\.\d+)?)/)[0]);
       appliedAttrs.push(line);
     }
   }
 
-  // Apply demo bonus dice (assume all white)
+  // Assume all bonus dice are white for demo
   multiplier *= bonusDice["white"].mult;
   totalDice += bonusDice["white"].dice;
 
-  // Update dice UI
+  // Update UI
   document.getElementById('D1').innerText = dice[0];
   document.getElementById('D2').innerText = dice[1];
   document.getElementById('D3').innerText = dice[2];
-
-  // Update attributes UI
   document.getElementById('attributesDisplay').innerHTML = appliedAttrs.map(t=>"<div>"+t+"</div>").join("");
-
-  // Calculate final score
   let finalScore = Math.floor(totalDice * multiplier);
   document.getElementById('summary').innerText = `${totalDice} + ${dice.reduce((a,b)=>a+b,0)} x ${multiplier.toFixed(1)} = ${finalScore}`;
 
   // Reroll suggestion
-  let target = 25; // demo target
   if(finalScore<target && rerollsLeft>0){
     rerollsLeft--;
-    let maxVals = [fam[0],fam[1],fam[2]];
+    let fam = [parseInt(document.getElementById('fam1').value),
+               parseInt(document.getElementById('fam2').value),
+               parseInt(document.getElementById('fam3').value)];
     let worstDie = dice.indexOf(Math.min(...dice));
     document.getElementById('reroll').innerText = `Reroll die ${worstDie+1} for best chance (rerolls left: ${rerollsLeft})`;
   } else {
