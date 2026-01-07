@@ -2,35 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mystic Frontier Calculator - Auto UI Detection</title>
+<title>Mystic Frontier Calculator - Full Upgrade</title>
 <style>
-  body { margin:0; font-family:sans-serif; background:#121212; color:#fff; }
-  #container { display:flex; height:100vh; }
-  #leftPanel { flex:2; display:flex; justify-content:center; align-items:center; background:#1e1e1e; }
-  #canvas { border:2px solid #444; }
-  #rightPanel { flex:1; padding:20px; display:flex; flex-direction:column; background:#1c1c1c; overflow:auto; }
-  h2 { margin-top:0; }
-  .section { margin-top:15px; border-top:1px solid #333; padding-top:10px; }
-  .dice-box { display:flex; gap:10px; margin-top:5px; }
-  .dice { width:40px; height:40px; background:#333; border-radius:5px; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:18px; }
-  textarea { width:100%; background:#222; color:#0f0; border:none; padding:5px; font-family:monospace; }
-  select { padding:5px; background:#222; color:#fff; border:none; margin-left:5px; }
-  button { padding:8px 12px; margin-top:5px; background:#0066ff; border:none; color:#fff; border-radius:4px; cursor:pointer; }
-  button:hover { background:#0055cc; }
-  .summary { font-size:24px; margin-bottom:10px; }
-  .reroll-suggestion { color:#ff0; margin-top:5px; }
+body { margin:0; font-family:sans-serif; background:#121212; color:#fff; }
+#container { display:flex; height:100vh; }
+#leftPanel { flex:2; display:flex; justify-content:center; align-items:center; background:#1e1e1e; }
+#canvas { border:2px solid #444; }
+#rightPanel { flex:1; padding:20px; display:flex; flex-direction:column; background:#1c1c1c; overflow:auto; }
+h2 { margin-top:0; }
+.section { margin-top:15px; border-top:1px solid #333; padding-top:10px; }
+.dice-box { display:flex; gap:10px; margin-top:5px; }
+.dice { width:40px; height:40px; background:#333; border-radius:5px; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:18px; }
+textarea { width:100%; background:#222; color:#0f0; border:none; padding:5px; font-family:monospace; }
+select { padding:5px; background:#222; color:#fff; border:none; margin-left:5px; }
+button { padding:8px 12px; margin-top:5px; background:#0066ff; border:none; color:#fff; border-radius:4px; cursor:pointer; }
+button:hover { background:#0055cc; }
+.summary { font-size:24px; margin-bottom:10px; }
+.reroll-suggestion { color:#ff0; margin-top:5px; }
+.siteDice { display:flex; gap:5px; margin-top:5px; }
+.siteSlot { width:30px; height:30px; background:#222; border-radius:4px; display:flex; justify-content:center; align-items:center; font-weight:bold; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
 
 <div id="container">
-  <!-- Left Panel: Screen Capture -->
   <div id="leftPanel">
     <canvas id="canvas" width="700" height="400"></canvas>
   </div>
-
-  <!-- Right Panel: Analysis -->
   <div id="rightPanel">
     <h2>Analysis Results</h2>
     <div class="summary" id="summary">TOTAL + DICE x MULTIPLIER</div>
@@ -50,10 +49,12 @@
 
     <div class="section">
       <strong>SITE DETAILS</strong>
-      <div>White Dice: Multiplier +1.2</div>
-      <div>Blue Dice: -1 to Dice, Multiplier +1.4</div>
-      <div>Purple Dice: +1 to Dice, Multiplier +1.6</div>
-      <div>Orange Dice: +1 to Dice, Multiplier +2</div>
+      <div class="siteDice" id="siteDice">
+        <div class="siteSlot" id="slot1"></div>
+        <div class="siteSlot" id="slot2"></div>
+        <div class="siteSlot" id="slot3"></div>
+        <div class="siteSlot" id="slot4"></div>
+      </div>
     </div>
 
     <div class="section">
@@ -78,28 +79,68 @@
 let canvas = document.getElementById('canvas');
 let ctx = canvas.getContext('2d');
 let videoStream;
-
-const bonusDice = {
-  "white": {dice:0, mult:1.2},
-  "blue": {dice:-1, mult:1.4},
-  "purple": {dice:1, mult:1.6},
-  "orange": {dice:1, mult:2.0}
-};
-
 let dice = [0,0,0];
 let rerollsLeft = 3;
 
-async function detectGameUI(imageData) {
-  // Simple placeholder: assume the entire canvas is the UI for now
-  // Future: implement border/color detection to crop cat-border automatically
-  return {x:0, y:0, width:canvas.width, height:canvas.height};
+// Define bonus dice values
+const bonusDice = { "white":{dice:0,mult:1.2}, "blue":{dice:-1,mult:1.4}, "purple":{dice:1,mult:1.6}, "orange":{dice:1,mult:2.0} };
+const diceColors = {
+  white:[200,200,200],
+  blue:[50,100,255],
+  purple:[180,50,200],
+  orange:[255,150,0]
+};
+
+// Detect cat-border UI automatically
+function detectCatUI(imageData) {
+    const data=imageData.data;
+    let minX=canvas.width,minY=canvas.height,maxX=0,maxY=0;
+    for(let y=0;y<canvas.height;y++){
+        for(let x=0;x<canvas.width;x++){
+            let idx=(y*canvas.width+x)*4;
+            let r=data[idx],g=data[idx+1],b=data[idx+2];
+            if(r>100 && r<200 && g>60 && g<150 && b<80){
+                if(x<minX) minX=x;
+                if(x>maxX) maxX=x;
+                if(y<minY) minY=y;
+                if(y>maxY) maxY=y;
+            }
+        }
+    }
+    minX+=5; minY+=5; maxX-=5; maxY-=5;
+    if(minX>=maxX || minY>=maxY) return {x:0,y:0,width:canvas.width,height:canvas.height};
+    return {x:minX,y:minY,width:maxX-minX,height:maxY-minY};
 }
 
-async function runOCR(cropped) {
-  const {data:{text}} = await Tesseract.recognize(cropped, 'eng', {logger:m=>console.log(m)});
-  return text;
+// Preprocess image: grayscale + threshold
+function preprocessCanvas(c){
+    const ctxC=c.getContext('2d');
+    let imgData=ctxC.getImageData(0,0,c.width,c.height);
+    let data=imgData.data;
+    for(let i=0;i<data.length;i+=4){
+        let gray=0.3*data[i]+0.59*data[i+1]+0.11*data[i+2];
+        gray = gray>128?255:0;
+        data[i]=data[i+1]=data[i+2]=gray;
+    }
+    ctxC.putImageData(imgData,0,0);
+    return c;
 }
 
+// Helper: detect closest color
+function detectColor(r,g,b){
+  let best=null,dist=9999;
+  for(let c in diceColors){
+    let dr=r-diceColors[c][0], dg=g-diceColors[c][1], db=b-diceColors[c][2];
+    let d=dr*dr+dg*dg+db*db;
+    if(d<dist){dist=d; best=c;}
+  }
+  return best;
+}
+
+// OCR wrapper
+async function runOCR(c){ const {data:{text}}=await Tesseract.recognize(c,'eng',{logger:m=>console.log(m)}); return text; }
+
+// Screen capture
 document.getElementById('selectScreen').onclick = async ()=>{
   try{
     videoStream = await navigator.mediaDevices.getDisplayMedia({video:true});
@@ -113,74 +154,82 @@ document.getElementById('selectScreen').onclick = async ()=>{
 };
 
 document.getElementById('process').onclick = async ()=>{
-  // Detect UI region (cat-border)
-  let uiBox = await detectGameUI(ctx.getImageData(0,0,canvas.width,canvas.height));
+  const uiBox = detectCatUI(ctx.getImageData(0,0,canvas.width,canvas.height));
   let croppedCanvas = document.createElement('canvas');
-  croppedCanvas.width = uiBox.width;
-  croppedCanvas.height = uiBox.height;
-  let croppedCtx = croppedCanvas.getContext('2d');
-  croppedCtx.putImageData(ctx.getImageData(uiBox.x, uiBox.y, uiBox.width, uiBox.height),0,0);
+  croppedCanvas.width=uiBox.width;
+  croppedCanvas.height=uiBox.height;
+  croppedCanvas.getContext('2d').putImageData(ctx.getImageData(uiBox.x,uiBox.y,uiBox.width,uiBox.height),0,0);
+  preprocessCanvas(croppedCanvas);
 
-  // OCR the UI
   let rawText = await runOCR(croppedCanvas);
   document.getElementById('rawText').value = rawText;
 
-  // Extract dice, target, attributes from raw text (simple regex parsing demo)
-  // Number to beat
-  let targetMatch = rawText.match(/number to beat[:\s]*([0-9]+)/i);
-  let target = targetMatch ? parseInt(targetMatch[1]) : 25;
+  // Extract target
+  let targetMatch=rawText.match(/number to beat[:\s]*([0-9]+)/i);
+  let target=targetMatch?parseInt(targetMatch[1]):25;
 
-  // Dice values (placeholder regex)
-  let diceMatches = rawText.match(/dice\s*1[:\s]*([0-9]+)/i);
-  dice[0] = diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
-  diceMatches = rawText.match(/dice\s*2[:\s]*([0-9]+)/i);
-  dice[1] = diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
-  diceMatches = rawText.match(/dice\s*3[:\s]*([0-9]+)/i);
-  dice[2] = diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
+  // Extract dice
+  let diceMatches=rawText.match(/dice\s*1[:\s]*([0-9]+)/i);
+  dice[0]=diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
+  diceMatches=rawText.match(/dice\s*2[:\s]*([0-9]+)/i);
+  dice[1]=diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
+  diceMatches=rawText.match(/dice\s*3[:\s]*([0-9]+)/i);
+  dice[2]=diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
 
-  // Attributes parsing (lines that mention die or familiar)
-  let lines = rawText.split("\n").filter(l=>l.trim()!="");
-  let totalDice = dice.reduce((a,b)=>a+b,0);
-  let multiplier = 1.0;
-  let appliedAttrs = [];
+  // Detect bonus dice in site bar
+  const slotIds=["slot1","slot2","slot3","slot4"];
+  let siteMultiplier=1.0, siteDiceTotal=0;
+  slotIds.forEach((id,i)=>{
+    const slot=document.getElementById(id);
+    // sample center pixel
+    const x=Math.floor(croppedCanvas.width*0.2*(i+1)), y=Math.floor(croppedCanvas.height*0.85);
+    const data=croppedCanvas.getContext('2d').getImageData(x,y,1,1).data;
+    const color=detectColor(data[0],data[1],data[2]);
+    if(color){
+      slot.style.background=color;
+      siteMultiplier*=bonusDice[color].mult;
+      siteDiceTotal+=bonusDice[color].dice;
+      slot.innerText=color[0].toUpperCase();
+    } else {
+      slot.style.background="#222"; slot.innerText="";
+    }
+  });
+
+  // Parse attributes
+  let lines=rawText.split("\n").filter(l=>l.trim()!="");
+  let totalDice=dice.reduce((a,b)=>a+b,0);
+  let multiplier=1.0;
+  let appliedAttrs=[];
   for(let line of lines){
-    let l = line.toLowerCase();
-    // Dice-dependent
-    if(l.includes("second die") && l.includes("even") && dice[1]%2===0){ totalDice += 6; appliedAttrs.push(line); }
-    if(l.includes("third die") && l.includes("odd") && dice[2]%2===1){ totalDice += 6; appliedAttrs.push(line); }
-    // Familiar-dependent always true
-    if(l.includes("poison elemental") || l.includes("all familiars different")) {
-      if(l.includes("dice total")) totalDice += parseInt(l.match(/(\d+)/)[0]);
-      if(l.includes("multiplier")) multiplier *= parseFloat(l.match(/(\d+(\.\d+)?)/)[0]);
+    let l=line.toLowerCase();
+    if(l.includes("second die") && l.includes("even") && dice[1]%2===0){ totalDice+=6; appliedAttrs.push(line);}
+    if(l.includes("third die") && l.includes("odd") && dice[2]%2===1){ totalDice+=6; appliedAttrs.push(line);}
+    if(l.includes("poison elemental") || l.includes("all familiars different")){
+      if(l.includes("dice total")) totalDice+=parseInt(l.match(/(\d+)/)[0]);
+      if(l.includes("multiplier")) multiplier*=parseFloat(l.match(/(\d+(\.\d+)?)/)[0]);
       appliedAttrs.push(line);
     }
   }
 
-  // Assume all bonus dice are white for demo
-  multiplier *= bonusDice["white"].mult;
-  totalDice += bonusDice["white"].dice;
+  multiplier*=siteMultiplier;
+  totalDice+=siteDiceTotal;
 
   // Update UI
-  document.getElementById('D1').innerText = dice[0];
-  document.getElementById('D2').innerText = dice[1];
-  document.getElementById('D3').innerText = dice[2];
-  document.getElementById('attributesDisplay').innerHTML = appliedAttrs.map(t=>"<div>"+t+"</div>").join("");
-  let finalScore = Math.floor(totalDice * multiplier);
-  document.getElementById('summary').innerText = `${totalDice} + ${dice.reduce((a,b)=>a+b,0)} x ${multiplier.toFixed(1)} = ${finalScore}`;
+  document.getElementById('D1').innerText=dice[0];
+  document.getElementById('D2').innerText=dice[1];
+  document.getElementById('D3').innerText=dice[2];
+  document.getElementById('attributesDisplay').innerHTML=appliedAttrs.map(t=>"<div>"+t+"</div>").join("");
+  let finalScore=Math.floor(totalDice*multiplier);
+  document.getElementById('summary').innerText=`${totalDice} + ${dice.reduce((a,b)=>a+b,0)} x ${multiplier.toFixed(1)} = ${finalScore}`;
 
   // Reroll suggestion
   if(finalScore<target && rerollsLeft>0){
     rerollsLeft--;
-    let fam = [parseInt(document.getElementById('fam1').value),
-               parseInt(document.getElementById('fam2').value),
-               parseInt(document.getElementById('fam3').value)];
-    let worstDie = dice.indexOf(Math.min(...dice));
-    document.getElementById('reroll').innerText = `Reroll die ${worstDie+1} for best chance (rerolls left: ${rerollsLeft})`;
-  } else {
-    document.getElementById('reroll').innerText = '';
-  }
+    let fam=[parseInt(document.getElementById('fam1').value),parseInt(document.getElementById('fam2').value),parseInt(document.getElementById('fam3').value)];
+    let worstDie=dice.indexOf(Math.min(...dice));
+    document.getElementById('reroll').innerText=`Reroll die ${worstDie+1} for best chance (rerolls left: ${rerollsLeft})`;
+  } else { document.getElementById('reroll').innerText=''; }
 };
 </script>
-
 </body>
 </html>
