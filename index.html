@@ -2,187 +2,183 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mystic Frontier Advanced Assistant</title>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<title>Mystic Frontier Calculator - Dynamic Attributes</title>
 <style>
-body{font-family:system-ui,Segoe UI,Roboto,Arial;background:#0b1020;color:#e5e7eb;margin:0;padding:16px}
-.container{max-width:1100px;margin:auto}
-h1{font-size:1.6rem;margin-bottom:4px}
-.muted{color:#9ca3af;font-size:.85rem}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-.card{background:#0f172a;border-radius:14px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-button{padding:8px 12px;border:none;border-radius:8px;background:#2563eb;color:white;cursor:pointer}
-button.secondary{background:#334155}
-input,select{width:100%;padding:6px;border-radius:6px;border:none;margin-top:4px}
-.row{display:flex;gap:8px;align-items:center}
-.ok{color:#22c55e;font-weight:700}
-.bad{color:#ef4444;font-weight:700}
-.warn{color:#f59e0b}
-.mono{font-family:ui-monospace,Menlo,monospace}
-canvas,video{width:100%;border-radius:10px;background:#020617}
+  body { margin: 0; font-family: sans-serif; background:#121212; color:#fff; }
+  #container { display:flex; height:100vh; }
+  #leftPanel { flex:2; display:flex; justify-content:center; align-items:center; background:#1e1e1e; }
+  #canvas { border:2px solid #444; }
+  #rightPanel { flex:1; padding:20px; display:flex; flex-direction:column; background:#1c1c1c; overflow:auto; }
+  h2 { margin-top:0; }
+  .section { margin-top:15px; border-top:1px solid #333; padding-top:10px; }
+  .dice-box { display:flex; gap:10px; margin-top:5px; }
+  .dice { width:40px; height:40px; background:#333; border-radius:5px; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:18px; }
+  .bonus { color:#0f0; margin-left:5px; }
+  textarea { width:100%; background:#222; color:#0f0; border:none; padding:5px; font-family:monospace; }
+  select { padding:5px; background:#222; color:#fff; border:none; margin-left:5px; }
+  button { padding:8px 12px; margin-top:5px; background:#0066ff; border:none; color:#fff; border-radius:4px; cursor:pointer; }
+  button:hover { background:#0055cc; }
+  .summary { font-size:24px; margin-bottom:10px; }
+  .reroll-suggestion { color:#ff0; margin-top:5px; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
-<div class="container">
-<h1>Mystic Frontier Advanced Assistant</h1>
-<p class="muted">OCR-driven wave calculator + attribute & reroll optimizer (3 rerolls / 5 waves)</p>
 
-<div class="grid">
-<div class="card">
-<h3>Screen Capture</h3>
-<button onclick="startCapture()">Capture Screen</button>
-<video id="video" autoplay muted></video>
-<canvas id="canvas"></canvas>
-<button class="secondary" onclick="runOCR()">Run OCR</button>
-<p class="muted">Reads dice, bonus dice color, attributes, target</p>
-</div>
+<div id="container">
+  <!-- Left Panel: Screen Capture -->
+  <div id="leftPanel">
+    <canvas id="canvas" width="700" height="400"></canvas>
+  </div>
 
-<div class="card">
-<h3>Wave State</h3>
-<label>Wave
-<select id="wave">
-<option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
-</select></label>
-<label>Target<input id="target" type="number"></label>
-<label>Remaining Rerolls<input id="rerolls" type="number" value="3"></label>
-</div>
+  <!-- Right Panel: Analysis -->
+  <div id="rightPanel">
+    <h2>Analysis Results</h2>
 
-<div class="card">
-<h3>Familiar Rarities</h3>
-<div id="diceInputs"></div>
-<button class="secondary" onclick="addDie()">Add Familiar</button>
-<p class="muted">Only the familiar rarities are editable. Bonus dice & attributes are fixed.</p>
-</div>
+    <!-- Top Summary -->
+    <div class="summary" id="summary">TOTAL + DICE x MULTIPLIER</div>
 
-<div class="card">
-<h3>Analysis</h3>
-<button onclick="analyze()">Analyze Wave</button>
-<div id="output"></div>
-</div>
+    <!-- Dice Display -->
+    <div>DICE</div>
+    <div class="dice-box" id="diceDisplay">
+      <div class="dice" id="D1">?</div>
+      <div class="dice" id="D2">?</div>
+      <div class="dice" id="D3">?</div>
+    </div>
+
+    <!-- Familiar Rarity Selection -->
+    <div class="section">
+      <strong>Familiar Rarity:</strong>
+      <select id="fam1"><option value="3">Common</option><option value="4">Rare</option><option value="5">Epic</option><option value="6">Unique+</option></select>
+      <select id="fam2"><option value="3">Common</option><option value="4">Rare</option><option value="5">Epic</option><option value="6">Unique+</option></select>
+      <select id="fam3"><option value="3">Common</option><option value="4">Rare</option><option value="5">Epic</option><option value="6">Unique+</option></select>
+    </div>
+
+    <!-- Site Details -->
+    <div class="section">
+      <strong>SITE DETAILS</strong>
+      <div>White Dice: Multiplier +1.2</div>
+      <div>Blue Dice: -1 to Dice, Multiplier +1.4</div>
+      <div>Purple Dice: +1 to Dice, Multiplier +1.6</div>
+      <div>Orange Dice: +1 to Dice, Multiplier +2</div>
+    </div>
+
+    <!-- Attributes -->
+    <div class="section">
+      <strong>ATTRIBUTES</strong>
+      <div id="attributesDisplay"></div>
+    </div>
+
+    <!-- Raw OCR Text -->
+    <div class="section">
+      <strong>Raw Text</strong>
+      <textarea id="rawText" rows="6" readonly>No text detected</textarea>
+    </div>
+
+    <!-- Controls -->
+    <div class="section">
+      <button id="selectScreen">Select Screen</button>
+      <button id="process">Process OCR</button>
+      <div class="reroll-suggestion" id="reroll"></div>
+    </div>
+  </div>
 </div>
 
 <script>
-let stream;
-const diceInputs=document.getElementById('diceInputs');
-const canvas=document.getElementById('canvas');
-const video=document.getElementById('video');
-const output=document.getElementById('output');
+let canvas = document.getElementById('canvas');
+let ctx = canvas.getContext('2d');
+let videoStream;
 
-// Add familiar rarity input
-function addDie(val='Common'){
- const d=document.createElement('div');
- d.className='row';
- d.innerHTML=`<label>Rarity<select>
-<option value='Common' ${val=='Common'?'selected':''}>Common</option>
-<option value='Rare' ${val=='Rare'?'selected':''}>Rare</option>
-<option value='Epic' ${val=='Epic'?'selected':''}>Epic</option>
-<option value='Unique' ${val=='Unique'?'selected':''}>Unique</option>
-</select></label>`;
- diceInputs.appendChild(d);
-}
-addDie();addDie();addDie();
+const bonusDice = {
+  "white": {dice:0, mult:1.2},
+  "blue": {dice:-1, mult:1.4},
+  "purple": {dice:1, mult:1.6},
+  "orange": {dice:1, mult:2.0}
+};
 
-// Start screen capture
-async function startCapture(){
- stream=await navigator.mediaDevices.getDisplayMedia({video:true});
- video.srcObject=stream;
-}
+let dice = [0,0,0];
+let rerollsLeft = 3;
 
-// OCR parsing
-function runOCR(){
- const ctx=canvas.getContext('2d');
- canvas.width=video.videoWidth;
- canvas.height=video.videoHeight;
- ctx.drawImage(video,0,0);
+document.getElementById('selectScreen').onclick = async ()=>{
+  try{
+    videoStream = await navigator.mediaDevices.getDisplayMedia({video:true});
+    let video = document.createElement('video');
+    video.srcObject = videoStream;
+    video.play();
+    video.onloadedmetadata = ()=>{
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      video.pause();
+      video.srcObject.getTracks()[0].stop();
+    };
+  }catch(e){alert("Screen capture failed: "+e);}
+};
 
- // Define regions based on your fixed UI (example percentages)
- const regions = {
-   target: {x:0.45,y:0.08,w:0.1,h:0.05},
-   dice: {x:0.35,y:0.25,w:0.3,h:0.25},
-   attributes: {x:0.1,y:0.55,w:0.8,h:0.25}
- };
+document.getElementById('process').onclick = async ()=>{
+  // Get familiar rarities
+  let fam = [parseInt(document.getElementById('fam1').value),
+             parseInt(document.getElementById('fam2').value),
+             parseInt(document.getElementById('fam3').value)];
 
- // Crop target number
- const targetCanvas=document.createElement('canvas');
- targetCanvas.width=canvas.width*regions.target.w;
- targetCanvas.height=canvas.height*regions.target.h;
- targetCanvas.getContext('2d').drawImage(canvas,canvas.width*regions.target.x,canvas.height*regions.target.y,targetCanvas.width,targetCanvas.height,0,0,targetCanvas.width,targetCanvas.height);
+  // Generate dice randomly for now; later replace with OCR
+  dice = [Math.ceil(Math.random()*fam[0]),
+          Math.ceil(Math.random()*fam[1]),
+          Math.ceil(Math.random()*fam[2])];
 
- Tesseract.recognize(targetCanvas,'eng').then(res=>{
-   const nums=res.data.text.match(/\d+/);
-   if(nums)document.getElementById('target').value=nums[0];
- });
+  // Placeholder: raw OCR attribute text
+  let rawAttrText = "If second die even, Dice Total +6\nPoison elemental active, Multiplier +1.6\nAll familiars different element, Dice Total +3";
+  document.getElementById('rawText').value = rawAttrText;
 
- // Crop attributes
- const attrCanvas=document.createElement('canvas');
- attrCanvas.width=canvas.width*regions.attributes.w;
- attrCanvas.height=canvas.height*regions.attributes.h;
- attrCanvas.getContext('2d').drawImage(canvas,canvas.width*regions.attributes.x,canvas.height*regions.attributes.y,attrCanvas.width,attrCanvas.height,0,0,attrCanvas.width,attrCanvas.height);
+  // Parse attributes
+  let lines = rawAttrText.split("\n");
+  let totalDice = dice.reduce((a,b)=>a+b,0);
+  let multiplier = 1.0;
+  let appliedAttrs = [];
 
- Tesseract.recognize(attrCanvas,'eng').then(res=>{
-   window.attributeText=res.data.text;
-   output.innerHTML+='<p class="muted">Attribute text captured.</p>';
- });
+  for(let line of lines){
+    line = line.toLowerCase();
+    // Dice-dependent
+    if(line.includes("second die") && line.includes("even") && dice[1]%2===0){
+      totalDice += 6; appliedAttrs.push(line);
+    }
+    if(line.includes("third die") && line.includes("odd") && dice[2]%2===1){
+      totalDice += 6; appliedAttrs.push(line);
+    }
+    // Familiar-dependent (always apply)
+    if(line.includes("poison elemental") || line.includes("all familiars different")){
+      if(line.includes("dice total")) totalDice += parseInt(line.match(/(\d+)/)[0]);
+      if(line.includes("multiplier")) multiplier *= parseFloat(line.match(/(\d+(\.\d+)?)/)[0]);
+      appliedAttrs.push(line);
+    }
+  }
 
- // Dice values and colors can be extended here similarly (if needed for bonus detection)
- output.innerHTML+='<p class="muted">OCR capture triggered.</p>';
-}
+  // Apply demo bonus dice (assume all white)
+  multiplier *= bonusDice["white"].mult;
+  totalDice += bonusDice["white"].dice;
 
-// Map rarity to max dice
-function getMaxRange(rarity){
- switch(rarity){
-   case 'Common': return 3;
-   case 'Rare': return 4;
-   case 'Epic': return 5;
-   case 'Unique': return 6;
- }
- return 6;
-}
+  // Update dice UI
+  document.getElementById('D1').innerText = dice[0];
+  document.getElementById('D2').innerText = dice[1];
+  document.getElementById('D3').innerText = dice[2];
 
-// Analyze wave
-function analyze(){
- const R=+document.getElementById('rerolls').value;
- const targetV=+document.getElementById('target').value;
- const diceRarities=[...diceInputs.children].map(d=>d.querySelector('select').value);
- const diceMax=diceRarities.map(r=>getMaxRange(r));
+  // Update attributes UI
+  document.getElementById('attributesDisplay').innerHTML = appliedAttrs.map(t=>"<div>"+t+"</div>").join("");
 
- // For demo, assume current dice values are random (replace with OCR dice detection)
- let diceValues=diceMax.map(m=>Math.floor(Math.random()*m)+1);
+  // Calculate final score
+  let finalScore = Math.floor(totalDice * multiplier);
+  document.getElementById('summary').innerText = `${totalDice} + ${dice.reduce((a,b)=>a+b,0)} x ${multiplier.toFixed(1)} = ${finalScore}`;
 
- // Apply attribute text rules
- let diceTotal=diceValues.reduce((a,b)=>a+b,0);
- let multiplier=1;
- if(window.attributeText){
-   const lines=window.attributeText.split('\n');
-   lines.forEach(line=>{
-     const m=line.match(/(first|second|third) die rolls an (odd|even).*Dice Total: ([+-]?\d+)/i);
-     if(m){
-       const dieIdx={'first':0,'second':1,'third':2}[m[1].toLowerCase()];
-       const parity=m[2].toLowerCase();
-       const effect=+m[3];
-       if((parity=='even' && diceValues[dieIdx]%2==0)||(parity=='odd' && diceValues[dieIdx]%2==1)){
-         diceTotal+=effect;
-       }
-     }
-     const mm=line.match(/Final Multiplier: \+([\d.]+)x/i);
-     if(mm)multiplier*=+mm[1];
-   });
- }
-
- // Compute final score
- const finalScore=Math.floor(diceTotal*multiplier);
-
- let html=`<p>Dice: [${diceValues.join(', ')}]</p>`;
- html+=`<p>Score: ${finalScore}</p>`;
- if(finalScore>=targetV){html+=`<p class="ok">✓ Wave cleared</p>`;} 
- else {
-   html+=`<p class="bad">✗ Failed — calculating best reroll...</p>`;
-   const advice={set:[1],p:75}; // Placeholder: add proper reroll optimizer logic here
-   html+=`<p class="warn">Best reroll: Dice ${advice.set.join(', ')}<br>Win chance: ${advice.p}%</p>`;
- }
- output.innerHTML=html;
-}
+  // Reroll suggestion
+  let target = 25; // demo target
+  if(finalScore<target && rerollsLeft>0){
+    rerollsLeft--;
+    let maxVals = [fam[0],fam[1],fam[2]];
+    let worstDie = dice.indexOf(Math.min(...dice));
+    document.getElementById('reroll').innerText = `Reroll die ${worstDie+1} for best chance (rerolls left: ${rerollsLeft})`;
+  } else {
+    document.getElementById('reroll').innerText = '';
+  }
+};
 </script>
+
 </body>
 </html>
