@@ -1,235 +1,904 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>Mystic Frontier Calculator - Full Upgrade</title>
-<style>
-body { margin:0; font-family:sans-serif; background:#121212; color:#fff; }
-#container { display:flex; height:100vh; }
-#leftPanel { flex:2; display:flex; justify-content:center; align-items:center; background:#1e1e1e; }
-#canvas { border:2px solid #444; }
-#rightPanel { flex:1; padding:20px; display:flex; flex-direction:column; background:#1c1c1c; overflow:auto; }
-h2 { margin-top:0; }
-.section { margin-top:15px; border-top:1px solid #333; padding-top:10px; }
-.dice-box { display:flex; gap:10px; margin-top:5px; }
-.dice { width:40px; height:40px; background:#333; border-radius:5px; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:18px; }
-textarea { width:100%; background:#222; color:#0f0; border:none; padding:5px; font-family:monospace; }
-select { padding:5px; background:#222; color:#fff; border:none; margin-left:5px; }
-button { padding:8px 12px; margin-top:5px; background:#0066ff; border:none; color:#fff; border-radius:4px; cursor:pointer; }
-button:hover { background:#0055cc; }
-.summary { font-size:24px; margin-bottom:10px; }
-.reroll-suggestion { color:#ff0; margin-top:5px; }
-.siteDice { display:flex; gap:5px; margin-top:5px; }
-.siteSlot { width:30px; height:30px; background:#222; border-radius:4px; display:flex; justify-content:center; align-items:center; font-weight:bold; }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="keywords" content="미스틱 프론티어, Mystic Frontier">
+
+  <title>미스틱 프론티어 계산기</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #facc15;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    body { 
+      font-family: 'Pretendard', -apple-system, sans-serif; 
+      background: var(--bg-color); 
+      color: var(--text-main);
+      margin: 0; 
+      padding: 20px; 
+      line-height: 1.6;
+    }
+
+    .container { 
+      max-width: 700px; 
+      margin: auto; 
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding: 0 10px;
+    }
+
+    h1 { font-size: 22px; margin: 0; color: var(--accent-secondary); text-shadow: 0 0 10px rgba(250, 204, 21, 0.3); }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    h2 { font-size: 16px; color: var(--text-muted); margin-top: 0; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+    h2::before { content: ''; display: inline-block; width: 4px; height: 16px; background: var(--accent-primary); border-radius: 2px; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    
+    input { 
+      background: #334155;
+      border: 1px solid #475569;
+      color: white;
+      padding: 12px; 
+      border-radius: 8px; 
+      width: 100%; 
+      box-sizing: border-box;
+      transition: all 0.2s;
+      font-size: 16px;
+    }
+    input:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+    input::placeholder { color: #64748b; font-size: 14px; }
+
+    .option-row { 
+      display: flex; 
+      gap: 8px; 
+      margin-bottom: 10px; 
+      align-items: center;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.5);
+    }
+    .option-row input.condition { flex: 2; }
+    .option-row input { flex: 1; }
+
+    button.calc-btn { 
+      width: 100%;
+      padding: 16px; 
+      border: none; 
+      border-radius: 12px; 
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff; 
+      font-size: 18px; 
+      font-weight: bold;
+      cursor: pointer; 
+      transition: transform 0.1s, box-shadow 0.2s;
+      margin: 20px 0;
+    }
+    button.calc-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(37, 99, 235, 0.4); }
+    button.calc-btn:active { transform: translateY(0); }
+
+    .lang-btn {
+      background: transparent;
+      border: 1px solid var(--text-muted);
+      color: var(--text-muted);
+      padding: 4px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .formula-visual {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 25px;
+      background: #0f172a;
+      border-radius: 14px;
+      margin-top: 10px;
+      border: 1px dashed #334155;
+    }
+    .formula-box { text-align: center; }
+    .formula-label { font-size: 12px; color: var(--text-muted); margin-bottom: 5px; }
+    .formula-val { font-size: 24px; font-weight: 800; color: var(--accent-secondary); }
+    .operator { font-size: 20px; color: var(--text-muted); font-weight: 300; }
+
+    .final-card {
+      text-align: center;
+      padding: 30px;
+      background: linear-gradient(145deg, #1e293b, #0f172a);
+    }
+    .result-score { font-size: 48px; font-weight: 900; margin: 10px 0; color: white; }
+    .winlose-badge {
+      display: inline-block;
+      padding: 8px 24px;
+      border-radius: 50px;
+      font-weight: bold;
+      font-size: 20px;
+      margin-top: 10px;
+    }
+    .win { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid var(--success); }
+    .lose { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+    .draw { background: rgba(148, 163, 184, 0.2); color: var(--text-muted); border: 1px solid var(--text-muted); }
+
+    .status-dot { font-size: 11px; padding: 2px 8px; border-radius: 4px; display: none; }
+    .status-dot.active { display: inline-block; background: var(--success); color: white; }
+    .status-dot.inactive { display: inline-block; background: #475569; color: white; }
+
+    .option-row.inactive-result input, .option-row.inactive-result .status-dot { opacity: 0.5; filter: grayscale(0.8); }
+    .option-row.active { border-left: 4px solid var(--success); background: rgba(16, 185, 129, 0.05); }
+
+    .familiar-group .option-row {
+      display: grid;
+      grid-template-columns: auto 2.2fr 0.5fr 0.5fr 50px; 
+      gap: 8px;
+    }
+
+    #extraOptions .option-row input {
+      flex: 1;
+    }
+
+    .familiar-group .option-row input {
+      width: 100% !important;
+      padding: 10px 4px;
+      font-size: 13px;
+    }
+
+    /*
+    .clear-btn {
+      background: #475569;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .clear-btn:hover { background: var(--danger); }
+    */
+
+    .clear-btn {
+      background: var(--danger); 
+      color: white;
+      border: none;
+      border-radius: 6px; 
+      width: 28px; 
+      height: 28px;
+      cursor: pointer;
+      font-size: 16px; 
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); 
+    }
+
+    .clear-btn:hover {
+      background: #b91c1c; 
+      transform: scale(1.05); 
+    }
+
+    .clear-btn:active {
+      transform: scale(0.95); 
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 프리셋 */
+    .modal-content {
+      background: white;
+      width: 90%;
+      max-width: 400px;
+      border-radius: 20px;
+      padding: 20px;
+      color: #333;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 18px;
+      color: #000;
+    }
+
+    .close-x {
+      position: absolute;
+      right: 0;
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #999;
+    }
+
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-item-btn:hover {
+      background: #f8fafc;
+      border-color: var(--accent-primary);
+    }
+
+    .modal-item-btn.active {
+      border: 2px solid var(--accent-primary);
+      color: var(--accent-primary);
+      font-weight: bold;
+    }    
+
+    .preset-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .modal-item-btn {
+      flex: 1;
+      padding: 15px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 16px;
+      color: #333;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .edit-name-btn {
+      width: 45px;
+      height: 45px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.2s;
+    }
+
+    .edit-name-btn:hover {
+      background: #e2e8f0;
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <header style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px;">
+      <div class="header-top" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <h1 id="title" style="font-size: 20px;">🎲 미스틱 프론티어 계산기</h1>
+        <div style="display: flex; gap: 6px;">
+          <button onclick="resetCurrentPreset()" class="lang-btn" style="border-color: var(--danger); color: var(--danger);">Reset</button>
+          <button onclick="toggleLang()" id="langBtn" class="lang-btn">EN</button>
+        </div>
+      </div>
 
-<div id="container">
-  <div id="leftPanel">
-    <canvas id="canvas" width="700" height="400"></canvas>
-  </div>
-  <div id="rightPanel">
-    <h2>Analysis Results</h2>
-    <div class="summary" id="summary">TOTAL + DICE x MULTIPLIER</div>
-    <div>DICE</div>
-    <div class="dice-box" id="diceDisplay">
-      <div class="dice" id="D1">?</div>
-      <div class="dice" id="D2">?</div>
-      <div class="dice" id="D3">?</div>
-    </div>
+      <button onclick="openPresetModal()" class="calc-btn" style="margin: 0; padding: 12px; font-size: 15px; background: #334155; border: 1px solid #475569;">
+        📁 <span id="currentPresetName">프리셋 1 선택됨</span>
+      </button>
+    </header>
 
-    <div class="section">
-      <strong>Familiar Rarity:</strong>
-      <select id="fam1"><option value="3">Common</option><option value="4">Rare</option><option value="5">Epic</option><option value="6">Unique+</option></select>
-      <select id="fam2"><option value="3">Common</option><option value="4">Rare</option><option value="5">Epic</option><option value="6">Unique+</option></select>
-      <select id="fam3"><option value="3">Common</option><option value="4">Rare</option><option value="5">Epic</option><option value="6">Unique+</option></select>
-    </div>
-
-    <div class="section">
-      <strong>SITE DETAILS</strong>
-      <div class="siteDice" id="siteDice">
-        <div class="siteSlot" id="slot1"></div>
-        <div class="siteSlot" id="slot2"></div>
-        <div class="siteSlot" id="slot3"></div>
-        <div class="siteSlot" id="slot4"></div>
+    <div id="presetModal" class="modal-overlay" onclick="closePresetModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3 id="modalTitle">불러올 프리셋을 선택하세요</h3>
+          <button class="close-x" onclick="closePresetModal()">×</button>
+        </div>
+        <div class="modal-body" id="presetList">
+          </div>
       </div>
     </div>
 
-    <div class="section">
-      <strong>ATTRIBUTES</strong>
-      <div id="attributesDisplay"></div>
+    <div class="card">
+      <h2 id="h-diffculty">난이도</h2>
+      <input type="number" id="diffcultyDice" placeholder="난이도 값" />
     </div>
 
-    <div class="section">
-      <strong>Raw OCR Text</strong>
-      <textarea id="rawText" rows="6" readonly>No text detected</textarea>
+    <div class="card">
+      <h2 id="h-mydice">내 주사위 결과 (1~6)</h2>
+      <div class="grid">
+        <input type="number" min="1" max="6" id="dice1" placeholder="D1" />
+        <input type="number" min="1" max="6" id="dice2" placeholder="D2" />
+        <input type="number" min="1" max="6" id="dice3" placeholder="D3" />
+      </div>
     </div>
 
-    <div class="section">
-      <button id="selectScreen">Select Screen</button>
-      <button id="process">Process OCR</button>
-      <div class="reroll-suggestion" id="reroll"></div>
+    <div class="card">
+      <h2 style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <div>
+            <span id="h-familiar">퍼밀 옵션 (조건 미입력 시 상시적용)</span>
+          </div>
+          <button type="button" class="clear-btn" onclick="resetSection('specialOptions')" style="margin-left: auto; width: auto; padding: 0 10px; font-size: 12px;">Reset</button>
+        </h2>      
+      <datalist id="conditionList">
+        <option value="If the first die rolls an odd number">
+        <option value="If the second die rolls an odd number">
+        <option value="If the third die rolls an odd number">
+        <option value="If the first die rolls an even number">
+        <option value="If the second die rolls an even number">
+        <option value="If the third die rolls an even number">
+        <option value="If the first and second dice add up to 2 or more">
+        <option value="If the first and second dice add up to 4 or more">
+        <option value="If the first and second dice add up to 6 or more">
+        <option value="If the first and third dice add up to 2 or more">
+        <option value="If the first and third dice add up to 4 or more">
+        <option value="If the first and third dice add up to 6 or more">
+        <option value="If the second and third dice add up to 2 or more">
+        <option value="If the second and third dice add up to 4 or more">
+        <option value="If the second and third dice add up to 6 or more">
+        <option value="If all three dice add up to 2 or more">
+        <option value="If all three dice add up to 3 or more">
+        <option value="If all three dice add up to 5 or more">                    
+        <option value="If the first and second dice match">
+        <option value="If the first and third dice match">
+        <option value="If the second and third dice match">
+        <option value="If all three dice roll a 1">
+        <option value="If all three dice roll a 2">
+        <option value="If all three dice roll a 3">
+        <option value="If all three dice roll a 4">
+        <option value="If all three dice roll a 5">
+        <option value="If all three dice roll a 6">
+        <option value="If the three dice roll consecutive numbers">
+      </datalist>
+      <div id="specialOptions" class="familiar-group">
+        <div class="option-row">
+          <button type="button" class="clear-btn" onclick="clearRow(this)">×</button>
+          <input class="condition" list="conditionList" placeholder="조건 선택 (선택사항)" onfocus="this.select()"/>
+          <input type="number" placeholder="+ / -" class="special-add" />
+          <input type="number" step="0.1" placeholder="배율" class="special-mul" />
+          <span class="status-dot"></span>
+        </div>
+        <div class="option-row">
+          <button type="button" class="clear-btn" onclick="clearRow(this)">×</button>
+          <input class="condition" list="conditionList" placeholder="조건 선택 (선택사항)" onfocus="this.select()"/>
+          <input type="number" placeholder="+ / -" class="special-add" />
+          <input type="number" step="0.1" placeholder="배율" class="special-mul" />
+          <span class="status-dot"></span>
+        </div>
+        <div class="option-row">
+          <button type="button" class="clear-btn" onclick="clearRow(this)">×</button>
+          <input class="condition" list="conditionList" placeholder="조건 선택 (선택사항)" onfocus="this.select()"/>
+          <input type="number" placeholder="+ / -" class="special-add" />
+          <input type="number" step="0.1" placeholder="배율" class="special-mul" />
+          <span class="status-dot"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <span id="h-item">아이템 옵션</span>
+        <button type="button" class="clear-btn" onclick="resetSection('extraOptions')" style="margin-left: auto; width: auto; padding: 0 10px; font-size: 12px;">Reset</button>
+      </h2>
+      
+      <div id="extraOptions">
+        <div class="option-row"><input type="number" placeholder="+ / -" class="extra-add" /><input type="number" step="0.1" placeholder="배율" class="extra-mul" /></div>
+        <div class="option-row"><input type="number" placeholder="+ / -" class="extra-add" /><input type="number" step="0.1" placeholder="배율" class="extra-mul" /></div>
+        <div class="option-row"><input type="number" placeholder="+ / -" class="extra-add" /><input type="number" step="0.1" placeholder="배율" class="extra-mul" /></div>
+        <div class="option-row"><input type="number" placeholder="+ / -" class="extra-add" /><input type="number" step="0.1" placeholder="배율" class="extra-mul" /></div>
+        <div class="option-row"><input type="number" placeholder="+ / -" class="extra-add" /><input type="number" step="0.1" placeholder="배율" class="extra-mul" /></div>
+      </div>
+    </div>
+
+    <button class="calc-btn" id="calcBtn" onclick="calculate(true)">결과 확인하기</button>
+
+    <div id="resultSection" style="display:none; margin-bottom: 50px;">
+      <div class="card">
+        <h2 id="h-formula">상세 계산식</h2>
+          <div class="formula-visual">
+            <div class="formula-box">
+              <div class="formula-label" id="lbl-formula-add">+ / -</div>
+              <div class="formula-val" id="fAdd">0</div>
+            </div>
+            <div class="operator">+</div>
+            <div class="formula-box">
+              <div class="formula-label" id="lbl-formula-base">주사위 합</div>
+              <div class="formula-val" id="fBase">0</div>
+            </div>
+            <div class="operator">×</div>
+            <div class="formula-box">
+              <div class="formula-label" id="lbl-formula-mul">배율</div>
+              <div class="formula-val" id="fMul">1</div>
+            </div>
+          </div>
+        </div>
+      <div class="card final-card">
+        <h2 id="h-result" style="justify-content: center;">결과</h2>
+        <div class="result-score" id="result">0</div>
+        <div id="winlose" class="winlose-badge">무승부</div>
+        <p id="alwaysNote" style="font-size:12px; color:var(--text-muted); margin-top:15px; display:none;"></p>
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-let canvas = document.getElementById('canvas');
-let ctx = canvas.getContext('2d');
-let videoStream;
-let dice = [0,0,0];
-let rerollsLeft = 3;
+  <script>
+    function toggleLang() {
+      const isKo = document.documentElement.lang === 'ko';
+      const newLang = isKo ? 'en' : 'ko';
+      document.documentElement.lang = newLang;
 
-// Define bonus dice values
-const bonusDice = { "white":{dice:0,mult:1.2}, "blue":{dice:-1,mult:1.4}, "purple":{dice:1,mult:1.6}, "orange":{dice:1,mult:2.0} };
-const diceColors = {
-  white:[200,200,200],
-  blue:[50,100,255],
-  purple:[180,50,200],
-  orange:[255,150,0]
-};
+      const trans = {
+        title: newLang === 'ko' ? '🎲 미스틱 프론티어 계산기' : '🎲 Mystic Frontier Calculator',
+        langBtn: newLang === 'ko' ? 'EN' : 'KO',
+        h_diffculty: newLang === 'ko' ? '난이도' : 'Difficulty',
+        h_mydice: newLang === 'ko' ? '내 주사위 결과 (1~6)' : 'My Dice Results (1~6)',
+        h_familiar: newLang === 'ko' ? '퍼밀 옵션 (조건 미입력 시 상시적용)' : 'Familiar Options (Always applied if empty)',
+        h_item: newLang === 'ko' ? '아이템 옵션' : 'Item Options',
+        h_formula: newLang === 'ko' ? '상세 계산식' : 'Calculation Detail',
+        h_result: newLang === 'ko' ? '결과' : 'Result',
+        h_formula: newLang === 'ko' ? '상세 계산식' : 'Calculation Detail',
+        lbl_f_add: '+ / -', 
+        lbl_f_base: newLang === 'ko' ? '주사위 합' : 'Dice Sum',
+        lbl_f_mul: newLang === 'ko' ? '배율' : 'Multiplier',
+        calcBtn: newLang === 'ko' ? '결과 확인하기' : 'Calculate',
+        
+        // Placeholder 데이터
+        ph_diff: newLang === 'ko' ? '난이도 값' : 'Difficulty Value',
+        ph_cond: newLang === 'ko' ? '조건 선택 (선택사항)' : 'Select condition (Optional)',
+        ph_add: '+ / -',
+        ph_mul: newLang === 'ko' ? '배율' : 'Multiplier'
+      };
 
-// Detect cat-border UI automatically
-function detectCatUI(imageData) {
-    const data=imageData.data;
-    let minX=canvas.width,minY=canvas.height,maxX=0,maxY=0;
-    for(let y=0;y<canvas.height;y++){
-        for(let x=0;x<canvas.width;x++){
-            let idx=(y*canvas.width+x)*4;
-            let r=data[idx],g=data[idx+1],b=data[idx+2];
-            if(r>100 && r<200 && g>60 && g<150 && b<80){
-                if(x<minX) minX=x;
-                if(x>maxX) maxX=x;
-                if(y<minY) minY=y;
-                if(y>maxY) maxY=y;
+      document.getElementById('title').innerText = trans.title;
+      document.getElementById('langBtn').innerText = trans.langBtn;
+      document.getElementById('h-diffculty').innerText = trans.h_diffculty;
+      document.getElementById('h-mydice').innerText = trans.h_mydice;
+      document.getElementById('h-familiar').innerText = trans.h_familiar;
+      document.getElementById('h-item').innerText = trans.h_item;
+      document.getElementById('h-formula').innerText = trans.h_formula;
+      document.getElementById('h-result').innerText = trans.h_result;
+      document.getElementById('calcBtn').innerText = trans.calcBtn;
+      document.getElementById('h-formula').innerText = trans.h_formula;
+      document.getElementById('lbl-formula-add').innerText = trans.lbl_f_add;
+      document.getElementById('lbl-formula-base').innerText = trans.lbl_f_base;
+      document.getElementById('lbl-formula-mul').innerText = trans.lbl_f_mul;
+
+      document.getElementById('diffcultyDice').placeholder = trans.ph_diff;
+      
+      document.querySelectorAll('.condition').forEach(el => {
+        el.placeholder = trans.ph_cond;
+      });
+      
+      document.querySelectorAll('.special-add, .extra-add').forEach(el => {
+        el.placeholder = trans.ph_add;
+      });
+      
+      document.querySelectorAll('.special-mul, .extra-mul').forEach(el => {
+        el.placeholder = trans.ph_mul;
+      });
+      
+      if(document.getElementById('resultSection').style.display !== 'none') calculate();
+    }
+
+    function calculate(shouldScroll = false) {
+      document.getElementById('resultSection').style.display = 'block';
+
+      const d1 = Number(document.getElementById('dice1').value) || 0;
+      const d2 = Number(document.getElementById('dice2').value) || 0;
+      const d3 = Number(document.getElementById('dice3').value) || 0;
+      const diffculty = Number(document.getElementById('diffcultyDice').value) || 0;
+
+      let baseSum = d1 + d2 + d3;
+      let addSum = 0;
+      let mulSum = 0;
+      let hasAlwaysOn = false;
+
+      document.querySelectorAll('#specialOptions .option-row').forEach(row => {
+        const c = row.querySelector('.condition').value.trim();
+        let conditionMet = false;
+
+        if (c === '') { if(row.querySelector('.special-add').value || row.querySelector('.special-mul').value) { conditionMet = true; hasAlwaysOn = true; } }
+        else {
+            // 스트레이트
+            if (c === 'If the three dice roll consecutive numbers') {
+                const arr = [d1,d2,d3].sort((a,b)=>a-b);
+                conditionMet = (arr[0]!==0) && (arr[1] === arr[0] + 1 && arr[2] === arr[1] + 1);
             }
+
+            // 홀수
+            if (c === 'If the first die rolls an odd number' && d1 % 2 === 1) conditionMet = true;
+            if (c === 'If the second die rolls an odd number' && d2 % 2 === 1) conditionMet = true;
+            if (c === 'If the third die rolls an odd number' && d3 % 2 === 1) conditionMet = true;
+
+            // 짝수
+            if (c === 'If the first die rolls an even number' && d1 % 2 === 0 && d1 !== 0) conditionMet = true;
+            if (c === 'If the second die rolls an even number' && d2 % 2 === 0 && d2 !== 0) conditionMet = true;
+            if (c === 'If the third die rolls an even number' && d3 % 2 === 0 && d3 !== 0) conditionMet = true;
+
+            // add up
+            if (c === 'If the first and second dice add up to 2 or more' && d1 >= 2 && d2 >= 2) conditionMet = true;
+            if (c === 'If the first and second dice add up to 4 or more' && d1 >= 4 && d2 >= 4) conditionMet = true;
+            if (c === 'If the first and second dice add up to 6 or more' && d1 >= 6 && d2 >= 6) conditionMet = true;
+
+            if (c === 'If the first and third dice add up to 2 or more' && d1 >= 2 && d3 >= 2) conditionMet = true;
+            if (c === 'If the first and third dice add up to 4 or more' && d1 >= 4 && d3 >= 4) conditionMet = true;
+            if (c === 'If the first and third dice add up to 6 or more' && d1 >= 6 && d3 >= 6) conditionMet = true;
+
+            if (c === 'If the second and third dice add up to 2 or more' && d2 >= 2 && d3 >= 2) conditionMet = true;
+            if (c === 'If the second and third dice add up to 4 or more' && d2 >= 4 && d3 >= 4) conditionMet = true;
+            if (c === 'If the second and third dice add up to 6 or more' && d2 >= 6 && d3 >= 6) conditionMet = true;
+
+            if (c === 'If all three dice add up to 2 or more' && d1 >= 2 && d2 >= 2 && d3 >= 2) conditionMet = true;
+            if (c === 'If all three dice add up to 3 or more' && d1 >= 3 && d2 >= 3 && d3 >= 3) conditionMet = true;
+            if (c === 'If all three dice add up to 5 or more' && d1 >= 5 && d2 >= 5 && d3 >= 5) conditionMet = true;
+            
+            // match
+            if (c === 'If the first and second dice match' && d1 === d2) conditionMet = true;
+            if (c === 'If the first and third dice match' && d1 === d3) conditionMet = true;
+            if (c === 'If the second and third dice match' && d2 === d3) conditionMet = true;
+
+            // Yacht
+            if (c === 'If all three dice roll a 1' && d1 === 1 && d2 === 1 && d3 === 1) conditionMet = true;
+            if (c === 'If all three dice roll a 2' && d1 === 2 && d2 === 2 && d3 === 2) conditionMet = true;
+            if (c === 'If all three dice roll a 3' && d1 === 3 && d2 === 3 && d3 === 3) conditionMet = true;
+            if (c === 'If all three dice roll a 4' && d1 === 4 && d2 === 4 && d3 === 4) conditionMet = true;
+            if (c === 'If all three dice roll a 5' && d1 === 5 && d2 === 5 && d3 === 5) conditionMet = true;
+            if (c === 'If all three dice roll a 6' && d1 === 6 && d2 === 6 && d3 === 6) conditionMet = true;
         }
-    }
-    minX+=5; minY+=5; maxX-=5; maxY-=5;
-    if(minX>=maxX || minY>=maxY) return {x:0,y:0,width:canvas.width,height:canvas.height};
-    return {x:minX,y:minY,width:maxX-minX,height:maxY-minY};
-}
 
-// Preprocess image: grayscale + threshold
-function preprocessCanvas(c){
-    const ctxC=c.getContext('2d');
-    let imgData=ctxC.getImageData(0,0,c.width,c.height);
-    let data=imgData.data;
-    for(let i=0;i<data.length;i+=4){
-        let gray=0.3*data[i]+0.59*data[i+1]+0.11*data[i+2];
-        gray = gray>128?255:0;
-        data[i]=data[i+1]=data[i+2]=gray;
-    }
-    ctxC.putImageData(imgData,0,0);
-    return c;
-}
+        const st = row.querySelector('.status-dot');
+        const currentLang = document.documentElement.lang;
 
-// Helper: detect closest color
-function detectColor(r,g,b){
-  let best=null,dist=9999;
-  for(let c in diceColors){
-    let dr=r-diceColors[c][0], dg=g-diceColors[c][1], db=b-diceColors[c][2];
-    let d=dr*dr+dg*dg+db*db;
-    if(d<dist){dist=d; best=c;}
+        if (conditionMet) {
+          row.classList.add('active');
+          row.classList.remove('inactive-result');
+          st.innerText = currentLang === 'ko' ? '적용됨' : 'Applied';
+          st.className = 'status-dot active';
+          addSum += Number(row.querySelector('.special-add').value) || 0;
+          mulSum += Number(row.querySelector('.special-mul').value) || 0;
+        } else {
+          row.classList.add('inactive-result');
+          row.classList.remove('active');
+          st.innerText = currentLang === 'ko' ? '미적용' : 'Not Applied';
+          st.className = 'status-dot inactive';
+        }
+      });
+
+      document.querySelectorAll('.extra-add').forEach(i => addSum += Number(i.value) || 0);
+      document.querySelectorAll('.extra-mul').forEach(i => mulSum += Number(i.value) || 0);
+
+      const multiplier = mulSum > 0 ? mulSum : 1;
+      const finalValue = (addSum + baseSum) * multiplier;
+      
+      document.getElementById('result').innerText = Math.floor(finalValue);
+      document.getElementById('fAdd').innerText = addSum;
+      document.getElementById('fBase').innerText = baseSum;
+      document.getElementById('fMul').innerText = multiplier.toFixed(1);
+
+      const wlBadge = document.getElementById('winlose');
+      if (finalValue > diffculty) {
+        wlBadge.innerText = document.documentElement.lang === 'ko' ? '승리' : 'WIN';
+        wlBadge.className = 'winlose-badge win';
+      } else if (finalValue < diffculty) {
+        wlBadge.innerText = document.documentElement.lang === 'ko' ? '패배' : 'LOSE';
+        wlBadge.className = 'winlose-badge lose';
+      } else {
+        wlBadge.innerText = document.documentElement.lang === 'ko' ? '무승부' : 'DRAW';
+        wlBadge.className = 'winlose-badge draw';
+      }
+
+      // 결과창으로 스크롤
+      if (shouldScroll) {
+        setTimeout(() => {
+          resultSection.scrollIntoView({ 
+            behavior: 'smooth', 
+          block: 'start' 
+          });
+        }, 50);
+      }
+    }
+
+  // 초기화 버튼
+  function clearRow(btn) {
+    const row = btn.parentElement;
+    
+    row.querySelectorAll('input').forEach(input => {
+      input.value = '';
+    });
+    
+    const st = row.querySelector('.status-dot');
+    st.innerText = '';
+    st.className = 'status-dot';
+    row.classList.remove('active', 'inactive-result');
   }
-  return best;
-}
 
-// OCR wrapper
-async function runOCR(c){ const {data:{text}}=await Tesseract.recognize(c,'eng',{logger:m=>console.log(m)}); return text; }
+  let currentPreset = 1;
+  let currentGroup = 'A'; // A: 1-3, B: 4-6
 
-// Screen capture
-document.getElementById('selectScreen').onclick = async ()=>{
-  try{
-    videoStream = await navigator.mediaDevices.getDisplayMedia({video:true});
-    let video = document.createElement('video');
-    video.srcObject = videoStream;
-    await video.play();
-    ctx.drawImage(video,0,0,canvas.width,canvas.height);
-    video.pause();
-    video.srcObject.getTracks()[0].stop();
-  }catch(e){alert("Screen capture failed: "+e);}
-};
+  let presetNames = JSON.parse(localStorage.getItem('mysticPresetNames')) || {
+    1: "Preset 1", 2: "Preset 2", 3: "Preset 3", 
+    4: "Preset 4", 5: "Preset 5", 6: "Preset 6"
+  };
 
-document.getElementById('process').onclick = async ()=>{
-  const uiBox = detectCatUI(ctx.getImageData(0,0,canvas.width,canvas.height));
-  let croppedCanvas = document.createElement('canvas');
-  croppedCanvas.width=uiBox.width;
-  croppedCanvas.height=uiBox.height;
-  croppedCanvas.getContext('2d').putImageData(ctx.getImageData(uiBox.x,uiBox.y,uiBox.width,uiBox.height),0,0);
-  preprocessCanvas(croppedCanvas);
+  function openPresetModal() {
+  const modal = document.getElementById('presetModal');
+  modal.style.display = 'flex';
+  renderModalPresets();
+  }
 
-  let rawText = await runOCR(croppedCanvas);
-  document.getElementById('rawText').value = rawText;
+  function closePresetModal(event) {
+    document.getElementById('presetModal').style.display = 'none';
+  }
 
-  // Extract target
-  let targetMatch=rawText.match(/number to beat[:\s]*([0-9]+)/i);
-  let target=targetMatch?parseInt(targetMatch[1]):25;
+  // 프리셋 목록
+  function renderModalPresets() {
+    const list = document.getElementById('presetList');
+    const currentLang = document.documentElement.lang;
+    list.innerHTML = '';
 
-  // Extract dice
-  let diceMatches=rawText.match(/dice\s*1[:\s]*([0-9]+)/i);
-  dice[0]=diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
-  diceMatches=rawText.match(/dice\s*2[:\s]*([0-9]+)/i);
-  dice[1]=diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
-  diceMatches=rawText.match(/dice\s*3[:\s]*([0-9]+)/i);
-  dice[2]=diceMatches?parseInt(diceMatches[1]):Math.ceil(Math.random()*3);
+    for (let i = 1; i <= 6; i++) {
+      const row = document.createElement('div');
+      row.className = 'preset-row';
 
-  // Detect bonus dice in site bar
-  const slotIds=["slot1","slot2","slot3","slot4"];
-  let siteMultiplier=1.0, siteDiceTotal=0;
-  slotIds.forEach((id,i)=>{
-    const slot=document.getElementById(id);
-    // sample center pixel
-    const x=Math.floor(croppedCanvas.width*0.2*(i+1)), y=Math.floor(croppedCanvas.height*0.85);
-    const data=croppedCanvas.getContext('2d').getImageData(x,y,1,1).data;
-    const color=detectColor(data[0],data[1],data[2]);
-    if(color){
-      slot.style.background=color;
-      siteMultiplier*=bonusDice[color].mult;
-      siteDiceTotal+=bonusDice[color].dice;
-      slot.innerText=color[0].toUpperCase();
-    } else {
-      slot.style.background="#222"; slot.innerText="";
+      const selectBtn = document.createElement('button');
+      selectBtn.className = `modal-item-btn ${currentPreset === i ? 'active' : ''}`;
+      selectBtn.innerText = presetNames[i];
+      selectBtn.onclick = () => {
+        selectPreset(i);
+        closePresetModal();
+      };
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-name-btn';
+      editBtn.innerHTML = '✏️';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        editPresetName(i);
+      };
+
+      row.appendChild(selectBtn);
+      row.appendChild(editBtn);
+      list.appendChild(row);
     }
+
+    document.getElementById('modalTitle').innerText = 
+      currentLang === 'ko' ? '불러올 프리셋을 선택하세요' : 'Select a preset to load';    
+  }
+
+  // 이름 수정
+  function editPresetName(idx) {
+    const currentLang = document.documentElement.lang;
+    const messages = {
+        ko: "새로운 프리셋 이름을 입력하세요:",
+        en: "Enter a new name for this preset:"
+      };    
+    const newName = prompt(messages[currentLang], presetNames[idx]);
+
+    if (newName && newName.trim() !== "") {
+      presetNames[idx] = newName.trim();
+      localStorage.setItem('mysticPresetNames', JSON.stringify(presetNames));
+      
+      renderModalPresets();
+      if (currentPreset === idx) {
+        document.getElementById('currentPresetName').innerText = newName;
+      }
+    }
+  }
+
+  // 프리셋 선택
+  function selectPreset(idx) {
+    currentPreset = idx;
+    document.getElementById('currentPresetName').innerText = presetNames[idx];
+    loadData();
+    localStorage.setItem('mysticFrontier_LastPreset', idx);
+  }
+
+  window.addEventListener('load', () => {
+    const last = localStorage.getItem('mysticFrontier_LastPreset') || 1;
+    selectPreset(parseInt(last));
+
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', saveData);
+    });
+  });
+    
+  // 프리셋 목록
+  function renderPresetOptions() {
+    const select = document.getElementById('presetSelect');
+    const start = currentGroup === 'A' ? 1 : 4;
+    select.innerHTML = '';
+    
+    for (let i = start; i < start + 3; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.innerText = `Preset ${i}`;
+      if (i === currentPreset) opt.selected = true;
+      select.appendChild(opt);
+    }
+  }
+
+  // 프리셋 변경
+  function changePreset(idx) {
+    currentPreset = idx;
+    document.getElementById('presetSelect').value = idx; // Select 값 동기화
+    loadData();
+  }
+
+  // 데이터 저장 
+  function saveData() {
+    const data = {
+      difficulty: document.getElementById('diffcultyDice').value,
+      dice: [
+        document.getElementById('dice1').value,
+        document.getElementById('dice2').value,
+        document.getElementById('dice3').value
+      ],
+      specialOptions: Array.from(document.querySelectorAll('#specialOptions .option-row')).map(row => ({
+        condition: row.querySelector('.condition').value,
+        add: row.querySelector('.special-add').value,
+        mul: row.querySelector('.special-mul').value
+      })),
+      extraOptions: Array.from(document.querySelectorAll('#extraOptions .option-row')).map(row => ({
+        add: row.querySelector('.extra-add').value,
+        mul: row.querySelector('.extra-mul').value
+      })),
+      lang: document.documentElement.lang
+    };
+    
+    localStorage.setItem(`mysticFrontierData_${currentPreset}`, JSON.stringify(data));
+    localStorage.setItem('mysticFrontier_LastPreset', currentPreset); // 마지막 사용 프리셋 기억
+  }
+
+  // 데이터 불러오기
+  function loadData() {
+    const saved = localStorage.getItem(`mysticFrontierData_${currentPreset}`);
+    
+    if (!saved) {
+      resetAllInputs();
+      return;
+    }
+
+    const data = JSON.parse(saved);
+
+    document.getElementById('diffcultyDice').value = data.difficulty || '';
+    document.getElementById('dice1').value = data.dice[0] || '';
+    document.getElementById('dice2').value = data.dice[1] || '';
+    document.getElementById('dice3').value = data.dice[2] || '';
+
+    const specialRows = document.querySelectorAll('#specialOptions .option-row');
+    data.specialOptions.forEach((opt, i) => {
+      if (specialRows[i]) {
+        specialRows[i].querySelector('.condition').value = opt.condition || '';
+        specialRows[i].querySelector('.special-add').value = opt.add || '';
+        specialRows[i].querySelector('.special-mul').value = opt.mul || '';
+      }
+    });
+
+    const extraRows = document.querySelectorAll('#extraOptions .option-row');
+    data.extraOptions.forEach((opt, i) => {
+      if (extraRows[i]) {
+        extraRows[i].querySelector('.extra-add').value = opt.add || '';
+        extraRows[i].querySelector('.extra-mul').value = opt.mul || '';
+      }
+    });
+
+    calculate();
+  }
+
+  // 프리셋 초기화
+  function resetCurrentPreset() {
+    const currentLang = document.documentElement.lang;
+    const currentPName = presetNames[currentPreset]; 
+    const msg = currentLang === 'ko' 
+      ? `현재 프리셋(${currentPName})의 모든 데이터를 초기화할까요?` 
+      : `Reset all data for Preset ${currentPName}?`;
+
+    if (confirm(msg)) {
+      localStorage.removeItem(`mysticFrontierData_${currentPreset}`);
+      const defaultName = currentLang === 'ko' ? `프리셋 ${currentPreset}` : `Preset ${currentPreset}`;
+      presetNames[currentPreset] = defaultName;
+      localStorage.setItem('mysticPresetNames', JSON.stringify(presetNames));
+      document.getElementById('currentPresetName').innerText = defaultName;
+      resetAllInputs();
+      loadData(true);
+      document.getElementById('resultSection').style.display = 'none';
+    }
+  }
+
+  // 입력창 초기화
+  function resetAllInputs() {
+    document.querySelectorAll('input').forEach(input => input.value = '');
+    document.querySelectorAll('.status-dot').forEach(dot => {
+      dot.innerText = '';
+      dot.className = 'status-dot';
+    });
+    document.querySelectorAll('.option-row').forEach(row => row.classList.remove('active', 'inactive-result'));
+    document.getElementById('resultSection').style.display = 'none';
+  }
+
+  // 초기 로드
+  window.addEventListener('load', () => {
+    const lastPreset = localStorage.getItem('mysticFrontier_LastPreset');
+    changePreset(lastPreset ? parseInt(lastPreset) : 1);
+
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', saveData);
+    });
   });
 
-  // Parse attributes
-  let lines=rawText.split("\n").filter(l=>l.trim()!="");
-  let totalDice=dice.reduce((a,b)=>a+b,0);
-  let multiplier=1.0;
-  let appliedAttrs=[];
-  for(let line of lines){
-    let l=line.toLowerCase();
-    if(l.includes("second die") && l.includes("even") && dice[1]%2===0){ totalDice+=6; appliedAttrs.push(line);}
-    if(l.includes("third die") && l.includes("odd") && dice[2]%2===1){ totalDice+=6; appliedAttrs.push(line);}
-    if(l.includes("poison elemental") || l.includes("all familiars different")){
-      if(l.includes("dice total")) totalDice+=parseInt(l.match(/(\d+)/)[0]);
-      if(l.includes("multiplier")) multiplier*=parseFloat(l.match(/(\d+(\.\d+)?)/)[0]);
-      appliedAttrs.push(line);
+  // 섹션별 초기화
+  function resetSection(sectionId) {
+    const currentLang = document.documentElement.lang;
+    const sectionName = sectionId === 'specialOptions' 
+      ? (currentLang === 'ko' ? "퍼밀 옵션" : "Familiar Options")
+      : (currentLang === 'ko' ? "아이템 옵션" : "Item Options");
+
+    const msg = currentLang === 'ko' 
+      ? `${sectionName}의 모든 내용을 삭제할까요?` 
+      : `Clear all ${sectionName}?`;
+
+    if (confirm(msg)) {
+      const container = document.getElementById(sectionId);
+      
+      container.querySelectorAll('input').forEach(input => input.value = '');
+      
+      if (sectionId === 'specialOptions') {
+        container.querySelectorAll('.status-dot').forEach(dot => {
+          dot.innerText = '';
+          dot.className = 'status-dot';
+        });
+        container.querySelectorAll('.option-row').forEach(row => {
+          row.classList.remove('active', 'inactive-result');
+        });
+      }
+
+      saveData();
+      if (document.getElementById('resultSection').style.display !== 'none') calculate();
     }
-  }
-
-  multiplier*=siteMultiplier;
-  totalDice+=siteDiceTotal;
-
-  // Update UI
-  document.getElementById('D1').innerText=dice[0];
-  document.getElementById('D2').innerText=dice[1];
-  document.getElementById('D3').innerText=dice[2];
-  document.getElementById('attributesDisplay').innerHTML=appliedAttrs.map(t=>"<div>"+t+"</div>").join("");
-  let finalScore=Math.floor(totalDice*multiplier);
-  document.getElementById('summary').innerText=`${totalDice} + ${dice.reduce((a,b)=>a+b,0)} x ${multiplier.toFixed(1)} = ${finalScore}`;
-
-  // Reroll suggestion
-  if(finalScore<target && rerollsLeft>0){
-    rerollsLeft--;
-    let fam=[parseInt(document.getElementById('fam1').value),parseInt(document.getElementById('fam2').value),parseInt(document.getElementById('fam3').value)];
-    let worstDie=dice.indexOf(Math.min(...dice));
-    document.getElementById('reroll').innerText=`Reroll die ${worstDie+1} for best chance (rerolls left: ${rerollsLeft})`;
-  } else { document.getElementById('reroll').innerText=''; }
-};
-</script>
+  } 
+  </script>
 </body>
 </html>
