@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="keywords" content="미스틱 프론티어, Mystic Frontier">
@@ -164,23 +164,6 @@
       font-size: 13px;
     }
 
-    /*
-    .clear-btn {
-      background: #475569;
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      cursor: pointer;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .clear-btn:hover { background: var(--danger); }
-    */
 
     .clear-btn {
       background: var(--danger); 
@@ -322,7 +305,6 @@
         <h1 id="title" style="font-size: 20px;">🎲 미스틱 프론티어 계산기</h1>
         <div style="display: flex; gap: 6px;">
           <button onclick="resetCurrentPreset()" class="lang-btn" style="border-color: var(--danger); color: var(--danger);">Reset</button>
-          <button onclick="toggleLang()" id="langBtn" class="lang-btn">EN</button>
         </div>
       </div>
 
@@ -595,14 +577,14 @@
         if (conditionMet) {
           row.classList.add('active');
           row.classList.remove('inactive-result');
-          st.innerText = currentLang === 'ko' ? '적용됨' : 'Applied';
+          st.innerText = currentLang === 'en' ? '적용됨' : 'Applied';
           st.className = 'status-dot active';
           addSum += Number(row.querySelector('.special-add').value) || 0;
           mulSum += Number(row.querySelector('.special-mul').value) || 0;
         } else {
           row.classList.add('inactive-result');
           row.classList.remove('active');
-          st.innerText = currentLang === 'ko' ? '미적용' : 'Not Applied';
+          st.innerText = currentLang === 'en' ? '미적용' : 'Not Applied';
           st.className = 'status-dot inactive';
         }
       });
@@ -705,7 +687,7 @@
     }
 
     document.getElementById('modalTitle').innerText = 
-      currentLang === 'ko' ? '불러올 프리셋을 선택하세요' : 'Select a preset to load';    
+      currentLang === 'en' ? '불러올 프리셋을 선택하세요' : 'Select a preset to load';    
   }
 
   // 이름 수정
@@ -832,7 +814,7 @@
   function resetCurrentPreset() {
     const currentLang = document.documentElement.lang;
     const currentPName = presetNames[currentPreset]; 
-    const msg = currentLang === 'ko' 
+    const msg = currentLang === 'en' 
       ? `현재 프리셋(${currentPName})의 모든 데이터를 초기화할까요?` 
       : `Reset all data for Preset ${currentPName}?`;
 
@@ -873,10 +855,10 @@
   function resetSection(sectionId) {
     const currentLang = document.documentElement.lang;
     const sectionName = sectionId === 'specialOptions' 
-      ? (currentLang === 'ko' ? "퍼밀 옵션" : "Familiar Options")
-      : (currentLang === 'ko' ? "아이템 옵션" : "Item Options");
+      ? (currentLang === 'en' ? "퍼밀 옵션" : "Familiar Options")
+      : (currentLang === 'en' ? "아이템 옵션" : "Item Options");
 
-    const msg = currentLang === 'ko' 
+    const msg = currentLang === 'en' 
       ? `${sectionName}의 모든 내용을 삭제할까요?` 
       : `Clear all ${sectionName}?`;
 
